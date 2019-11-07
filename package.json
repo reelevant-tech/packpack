@@ -1,6 +1,6 @@
 {
   "name": "@rlvt/packpack",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "NPM Pack that works",
   "main": "index.js",
   "license": "Apache-2.0",
