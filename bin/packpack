@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+
+const { run } = require('../build/index.js')
+var args = process.argv.slice(2)
+var options = {
+  fileName: process.argv.indexOf('--fileName') > -1
+}
+
+if (args.includes('--help')) {
+  console.log(`
+  Welcome to Packpack, the tool that pack your application and it's dependencies
+
+  Usage is pretty simple:
+  > packpack
+
+  Will produce a gzip with your application code and your "dependencies"
+  as defined in your package.jsonfile in the format of:
+  
+  {package.name}-{package.version}.tgz
+
+  You can modify this behavior with --fileName:
+  > packpack --fileName app.tgz
+  
+  Happy packing :)
+`)
+  process.exit(0)
+}
+
+run({ cwd: process.cwd() }, options, function onNpmBundle (error, output) {
+  if (error) {
+    throw error
+  }
+  if (output) {
+    process.stdout.write(output.file)
+  }
+})

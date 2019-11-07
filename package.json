@@ -1,0 +1,26 @@
+{
+  "name": "@rlvt/packpack",
+  "version": "0.1.0",
+  "description": "NPM Pack that works",
+  "main": "index.js",
+  "license": "Apache-2.0",
+  "private": false,
+  "scripts": {
+    "build": "tsc --project ."
+  },
+  "bin": "bin/packpack",
+  "files": [
+    "bin",
+    "build"
+  ],
+  "devDependencies": {
+    "@types/node": "12",
+    "@types/tar-fs": "^1.16.1",
+    "typescript": "^3.7.2"
+  },
+  "dependencies": {
+    "hash-for-dep": "^1.5.1",
+    "micromatch": "^4.0.2",
+    "tar-fs": "^2.0.0"
+  }
+}
