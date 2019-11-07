@@ -8,7 +8,9 @@
   "scripts": {
     "build": "tsc --project ."
   },
-  "bin": "bin/packpack",
+  "bin": {
+    "packpack": "./bin/packpack"
+  },
   "files": [
     "bin",
     "build"
