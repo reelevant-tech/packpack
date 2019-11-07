@@ -2,8 +2,10 @@
 
 const { run } = require('../build/index.js')
 var args = process.argv.slice(2)
+
+const filenameArg = process.argv.find(arg => arg.includes('filename'))
 var options = {
-  fileName: process.argv.indexOf('--fileName') > -1
+  filename: filenameArg ? filenameArg.split('=')[1] : undefined
 }
 
 if (args.includes('--help')) {
@@ -18,8 +20,8 @@ if (args.includes('--help')) {
   
   {package.name}-{package.version}.tgz
 
-  You can modify this behavior with --fileName:
-  > packpack --fileName app.tgz
+  You can modify this behavior with --filename:
+  > packpack --filename=app.tgz
   
   Happy packing :)
 `)
