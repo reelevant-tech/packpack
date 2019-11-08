@@ -28,11 +28,4 @@ if (args.includes('--help')) {
   process.exit(0)
 }
 
-run({ cwd: process.cwd() }, options, function onNpmBundle (error, output) {
-  if (error) {
-    throw error
-  }
-  if (output) {
-    process.stdout.write(output.file)
-  }
-})
+run({ cwd: process.cwd() }, options)

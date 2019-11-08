@@ -49,11 +49,23 @@ const NEVER_IGNORE = ignoreLinesToRegex([
   '!/+(changes|changelog|history)*',
 ])
 
+const fetchDependencies = async (cwd: string, deps: string[]) => {
+  let bundleDependenciesFiles = []
+  for (const dependency of deps) {
+    const dependencyList = depsFor(dependency, cwd)
+    for (const dep of dependencyList) {
+      const filesForBundledDep = await walk(dep.baseDir, null, new Set(FOLDERS_IGNORE))
+      bundleDependenciesFiles = bundleDependenciesFiles.concat(filesForBundledDep)
+    }
+  }
+  return bundleDependenciesFiles
+}
+
 export async function packTarball(
   config: Config
 ): Promise<NodeJS.ReadableStream> {
   const pkg = require(path.resolve(config.cwd, 'package.json'))
-  const { dependencies, main, files: onlyFiles} = pkg;
+  const { dependencies, main, files: onlyFiles, bundleDependenciesOf } = pkg;
 
   // include required files
   let filters: Array<IgnoreFilter> = NEVER_IGNORE.slice()
@@ -69,12 +81,17 @@ export async function packTarball(
   let bundleDependenciesFiles = [];
   const bundleDependencies = Object.keys(dependencies)
   if (bundleDependencies) {
-    for (const dependency of bundleDependencies) {
-      const dependencyList = depsFor(dependency, config.cwd)
-      for (const dep of dependencyList) {
-        const filesForBundledDep = await walk(dep.baseDir, null, new Set(FOLDERS_IGNORE))
-        bundleDependenciesFiles = bundleDependenciesFiles.concat(filesForBundledDep)
-      }
+    const deps = await fetchDependencies(config.cwd, bundleDependencies)
+    bundleDependenciesFiles = bundleDependenciesFiles.concat(deps)
+  }
+  // include more dependencies
+  if (bundleDependenciesOf) {
+    for (let pkgPath of bundleDependenciesOf) {
+      if (pkgPath.includes('package.json') === false) pkgPath += `/package.json`
+      const absolutePkgPath = path.resolve(config.cwd, pkgPath)
+      const { dependencies } = require(absolutePkgPath)
+      const resolvedDeps = await fetchDependencies(path.dirname(absolutePkgPath), Object.keys(dependencies))
+      bundleDependenciesFiles = bundleDependenciesFiles.concat(resolvedDeps)
     }
   }
 
@@ -126,8 +143,16 @@ export async function packTarball(
     config.cwd,
     keepFiles,
     (header: { name: string }) => {
-      if (header.name.includes(`../../node_modules`)) {
-        header.name = header.name.replace('../../node_modules', 'node_modules')
+      // the file might comes from outside of our cwd
+      // we must rewrite it to be correctly decompressed
+      if (header.name.startsWith('..')) {
+        // compute how much we need to cut
+        // const absolutePath = path.resolve(config.cwd, header.name)
+        const bundleOf = bundleDependenciesOf.find(path => header.name.startsWith(path))
+        if (bundleOf) {
+          const hasTrailingSlash = bundleOf[bundleOf.length - 1] === '/'
+          header.name = header.name.replace(`${bundleOf}${hasTrailingSlash ? '' : '/'}`, '')
+        }
       }
       return header
     },
@@ -142,11 +167,12 @@ function packWithIgnoreAndHeaders(
   return tar.pack(cwd, {
     entries: Array.from(filesTooKep),
     map: header => {
+      header = mapHeader ? mapHeader(header) : header
       const suffix = header.name === '.' ? '' : `/${header.name}`;
       header.name = `package${suffix}`;
       delete header.uid;
       delete header.gid;
-      return mapHeader ? mapHeader(header) : header;
+      return header;
     },
   })
 }
@@ -171,7 +197,7 @@ export async function run(
   }
 
   const normaliseScope = name => (name[0] === '@' ? name.substr(1).replace('/', '-') : name)
-  const filename = flags.filename || path.join(config.cwd, `${normaliseScope(pkg.name)}-v${pkg.version}.tgz`)
+  const filename = flags.filename || path.join(config.cwd, `${normaliseScope(pkg.name)}-${pkg.version}.tgz`)
 
   const stream = await pack(config)
 
